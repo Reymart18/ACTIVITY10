@@ -47,12 +47,6 @@ export default function EventCard({ event, onViewAttendees, onExport }) {
         >
           Export CSV
         </button>
-        <button
-          className="px-3 py-1 bg-purple-600 text-white rounded hover:bg-purple-700"
-          onClick={() => onExport(event.id, "pdf")}
-        >
-          Export PDF
-        </button>
       </div>
     </div>
   );

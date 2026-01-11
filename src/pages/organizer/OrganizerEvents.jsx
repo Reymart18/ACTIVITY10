@@ -10,6 +10,7 @@ import CreateEventModal from "../../components/organizer/CreateEventModal";
 import EventCard from "../../components/organizer/EventCard";
 import AttendeesModal from "../../components/organizer/AttendeesModal";
 import CheckinScanner from "../../components/organizer/CheckinScanner";
+import MessageBox from "../../components/messagebox/MessageBox";
 
 export default function OrganizerEvents() {
   const [events, setEvents] = useState([]);
@@ -21,6 +22,8 @@ export default function OrganizerEvents() {
   const [showAttendeesModal, setShowAttendeesModal] = useState(false);
   const [attendees, setAttendees] = useState([]);
 
+  const [message, setMessage] = useState(null); // ✅ message state
+
   useEffect(() => {
     loadEvents();
   }, []);
@@ -29,7 +32,7 @@ export default function OrganizerEvents() {
     setLoading(true);
     fetchMyEvents()
       .then(res => setEvents(res.data))
-      .catch(err => console.error(err))
+      .catch(err => setMessage({ type: "error", text: "Failed to load events." }))
       .finally(() => setLoading(false));
   };
 
@@ -40,38 +43,45 @@ export default function OrganizerEvents() {
       setShowCreateModal(false);
       setFormData({ title: "", location: "", startDate: "", capacity: "" });
       loadEvents();
+      setMessage({ type: "success", text: "Event created successfully!" });
     } catch (err) {
       console.error(err);
+      setMessage({ type: "error", text: "Failed to create event." });
     }
   };
 
   const handleViewAttendees = async (eventId) => {
     try {
       const res = await fetchAttendees(eventId);
-
-      // ✅ Updated: API already returns {name, email, checkedIn}, no need for ticket.user
       const mappedAttendees = res.data.map(a => ({
         id: a.id,
         name: a.name || "—",
         email: a.email || "—",
         checkedIn: a.checkedIn || false,
       }));
-
       setAttendees(mappedAttendees);
       setShowAttendeesModal(true);
     } catch (err) {
       console.error(err);
-      alert("Failed to load attendees.");
+      setMessage({ type: "error", text: "Failed to load attendees." });
     }
   };
 
   const handleExport = async (eventId, type) => {
     try {
-      await exportAttendees(eventId, type);
-      alert(`${type.toUpperCase()} exported successfully!`);
+      const res = await exportAttendees(eventId, type, { responseType: 'blob' });
+      const url = window.URL.createObjectURL(new Blob([res.data]));
+      const link = document.createElement('a');
+      link.href = url;
+      link.setAttribute('download', `${eventId}_attendees.${type}`);
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+
+      setMessage({ type: "success", text: `${type.toUpperCase()} exported successfully!` });
     } catch (err) {
       console.error(err);
-      alert(`Failed to export ${type.toUpperCase()}`);
+      setMessage({ type: "error", text: `Failed to export ${type.toUpperCase()}` });
     }
   };
 
@@ -127,6 +137,15 @@ export default function OrganizerEvents() {
 
       {/* Check-in Scanner */}
       <CheckinScanner />
+
+      {/* ✅ Message Box */}
+      {message && (
+        <MessageBox
+          type={message.type}
+          message={message.text}
+          onClose={() => setMessage(null)}
+        />
+      )}
     </div>
   );
 }

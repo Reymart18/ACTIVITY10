@@ -6,7 +6,6 @@ export default function Register() {
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [role, setRole] = useState("attendee"); // default role
   const [error, setError] = useState("");
   const navigate = useNavigate();
 
@@ -15,7 +14,13 @@ export default function Register() {
     setError("");
 
     try {
-      await axios.post("http://localhost:5000/auth/register", { name, email, password, role });
+      // Role is fixed as attendee
+      await axios.post("http://localhost:5000/auth/register", {
+        name,
+        email,
+        password,
+        role: "attendee",
+      });
       alert("Registration successful! Please login.");
       navigate("/");
     } catch (err) {
@@ -24,11 +29,13 @@ export default function Register() {
   };
 
   return (
-    <div className="flex items-center justify-center min-h-screen bg-gradient-to-br from-[#2A2529] to-[#F3F0E7]">
+    <div className="flex items-center justify-center min-h-screen bg-gradient-to-br from-[#249E94] to-[#161E54]">
       <div className="relative bg-white/20 backdrop-blur-xl border border-[#262424]/50 rounded-2xl shadow-2xl w-full max-w-md p-8">
         <h2 className="text-3xl font-bold text-center text-white mb-6">Register</h2>
 
-        {error && <p className="text-red-500 bg-red-100/30 p-2 rounded-md mb-4 text-center">{error}</p>}
+        {error && (
+          <p className="text-red-500 bg-red-100/30 p-2 rounded-md mb-4 text-center">{error}</p>
+        )}
 
         <form onSubmit={handleRegister} className="flex flex-col space-y-4">
           <input
@@ -56,14 +63,13 @@ export default function Register() {
             className="p-3 rounded-lg border border-gray-300/50 bg-white/30 placeholder-gray-200 text-white outline-none focus:ring-2 focus:ring-purple-400 transition"
           />
 
-          <select
-            value={role}
-            onChange={(e) => setRole(e.target.value)}
-            className="p-3 rounded-lg border border-gray-300/50 bg-white/30 text-white outline-none focus:ring-2 focus:ring-purple-400 transition"
-          >
-            <option value="attendee">Attendee</option>
-            <option value="organizer">Organizer</option>
-          </select>
+          {/* Display fixed role as Attendee */}
+          <input
+            type="text"
+            value="Attendee"
+            disabled
+            className="p-3 rounded-lg border border-gray-300/50 bg-white/30 text-white placeholder-gray-200 outline-none cursor-not-allowed"
+          />
 
           <button
             type="submit"

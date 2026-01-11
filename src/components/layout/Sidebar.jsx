@@ -32,13 +32,7 @@ import {
         {/* Menu */}
         <nav className="flex-1 px-4 py-6 space-y-2">
           <SidebarItem to="/admin" icon={Home} label="Home" end />
-          <SidebarItem to="/admin/events" icon={CalendarDays} label="Events" />
           <SidebarItem to="/admin/tickets" icon={Ticket} label="My Tickets" />
-          <SidebarItem
-            to="/admin/organizer"
-            icon={LayoutDashboard}
-            label="Organizer Dashboard"
-          />
           <SidebarItem
             to="/admin/manage"
             icon={Users}

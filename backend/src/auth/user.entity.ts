@@ -16,7 +16,10 @@ export class User {
   password: string;
 
   @Column({ default: 'attendee' })
-  role: string;
+  role: string; // 'attendee', 'organizer', 'admin'
+
+  @Column({ default: true })
+  isActive: boolean; // true = active, false = deactivated
 
   @OneToMany(() => Ticket, ticket => ticket.user)
   tickets: Ticket[];

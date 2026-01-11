@@ -1,3 +1,4 @@
+// src/checkin/checkin.service.ts
 import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
@@ -7,7 +8,7 @@ import { Ticket } from '../tickets/ticket.entity';
 export class CheckinService {
   constructor(
     @InjectRepository(Ticket)
-    private readonly ticketRepo: Repository<Ticket>, // <-- injected correctly
+    private readonly ticketRepo: Repository<Ticket>,
   ) {}
 
   async verify(referenceCode: string) {
@@ -23,5 +24,24 @@ export class CheckinService {
     await this.ticketRepo.save(ticket);
 
     return { success: true, message: `Checked in: ${ticket.user.name}` };
+  }
+
+  // ---------------------------
+  // Admin: fetch all checked-in tickets
+  // ---------------------------
+  async getAllCheckins() {
+    const tickets = await this.ticketRepo.find({
+      relations: ['user', 'event'],
+      order: { createdAt: 'DESC' }, // latest first
+    });
+
+    return tickets.map(t => ({
+      id: t.id,
+      userName: t.user.name,
+      userEmail: t.user.email,
+      eventName: t.event.title,
+      checkedIn: t.checkedIn,
+      checkinDate: t.checkedIn ? t.updatedAt : null,
+    }));
   }
 }

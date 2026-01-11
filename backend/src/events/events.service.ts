@@ -16,7 +16,6 @@ export class EventsService {
     private userRepo: Repository<User>,
   ) {}
 
-  // 🔹 ALL EVENTS (ATTENDEE VIEW)
   async findAllEvents(userId: number) {
     const events = await this.eventsRepo.find({
       relations: ['tickets', 'tickets.user'],
@@ -27,7 +26,7 @@ export class EventsService {
       return {
         id: e.id,
         title: e.title,
-        description: e.description, 
+        description: e.description,
         location: e.location,
         startDate: e.startDate,
         capacity: e.capacity,
@@ -38,7 +37,6 @@ export class EventsService {
     });
   }
 
-  // 🔹 ORGANIZER VIEW
   async findByOrganizer(organizerId: number) {
     const events = await this.eventsRepo.find({
       where: { organizerId },
@@ -57,12 +55,10 @@ export class EventsService {
     }));
   }
 
-  // 🔹 CREATE EVENT
   async createEvent(data: Partial<Event>) {
     return this.eventsRepo.save(this.eventsRepo.create(data));
   }
 
-  // 🔒 REGISTER FOR EVENT
   async registerForEvent(eventId: number, user: User) {
     const event = await this.eventsRepo.findOne({
       where: { id: eventId },
@@ -83,9 +79,7 @@ export class EventsService {
     });
 
     if (existingTicket) {
-      throw new BadRequestException(
-        'You are already registered for this event',
-      );
+      throw new BadRequestException('Already registered');
     }
 
     const ticket = this.ticketRepo.create({
@@ -98,7 +92,6 @@ export class EventsService {
     return this.ticketRepo.save(ticket);
   }
 
-  // 🔹 CANCEL REGISTRATION (only if not checked in)
   async cancelRegistration(eventId: number, user: User) {
     const ticket = await this.ticketRepo.findOne({
       where: {
@@ -108,13 +101,76 @@ export class EventsService {
     });
 
     if (!ticket) {
-      throw new BadRequestException('You are not registered for this event');
+      throw new BadRequestException('Not registered');
     }
 
     if (ticket.checkedIn) {
-      throw new BadRequestException('Cannot cancel after check-in');
+      throw new BadRequestException('Already checked in');
     }
 
     return this.ticketRepo.remove(ticket);
+  }
+
+  async deleteEvent(eventId: number, user: User) {
+    const event = await this.eventsRepo.findOne({ where: { id: eventId } });
+
+    if (!event) {
+      throw new BadRequestException('Event not found');
+    }
+
+    if (event.organizerId !== user.id && user.role !== 'admin') {
+      throw new BadRequestException('Not authorized to delete this event');
+    }
+
+    await this.ticketRepo.delete({ event: { id: eventId } });
+    await this.eventsRepo.delete(eventId);
+
+    return { message: 'Event deleted successfully' };
+  }
+
+  // ✅ Export attendees as CSV or PDF
+  async exportAttendees(eventId: number, type: string): Promise<Buffer> {
+    const tickets = await this.ticketRepo.find({
+      where: { event: { id: eventId } },
+      relations: ['user'],
+    });
+
+    if (type === 'csv') {
+      const header = 'Name,Email,CheckedIn\n';
+      const rows = tickets
+        .map(
+          (t) =>
+            `${t.user?.name ?? '—'},${t.user?.email ?? '—'},${
+              t.checkedIn ? 'Yes' : 'No'
+            }`,
+        )
+        .join('\n');
+
+      return Buffer.from(header + rows);
+    } else if (type === 'pdf') {
+      // Using pdfkit
+      const PDFDocument = require('pdfkit');
+      const doc = new PDFDocument();
+      const chunks: any[] = [];
+
+      doc.on('data', (chunk) => chunks.push(chunk));
+      doc.on('end', () => {});
+
+      doc.fontSize(16).text('Attendees List', { align: 'center' });
+      doc.moveDown();
+
+      tickets.forEach((t) => {
+        doc.fontSize(12).text(
+          `${t.user?.name ?? '—'} | ${t.user?.email ?? '—'} | ${
+            t.checkedIn ? 'Yes' : 'No'
+          }`,
+        );
+      });
+
+      doc.end();
+      return Buffer.concat(chunks);
+    }
+
+    throw new BadRequestException('Invalid export type');
   }
 }

@@ -10,12 +10,11 @@ export default function DashboardCards({ events }) {
   // Events Organized = total events
   const eventsOrganized = allEvents.length;
 
-  // Highest Attendees = max validated attendees among events
-  // Uses `validatedCount` instead of registered
-  const highestAttendees = allEvents.reduce(
-    (max, event) => Math.max(max, Number(event.validatedCount || 0)),
-    0
-  );
+  // Highest Attendees = max checked-in attendees among events
+  const highestAttendees = allEvents.reduce((max, event) => {
+    const validatedCount = event.tickets?.filter(t => t.checkedIn).length || 0;
+    return Math.max(max, validatedCount);
+  }, 0);
 
   return (
     <div className="grid grid-cols-1 md:grid-cols-3 gap-6">

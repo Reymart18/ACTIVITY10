@@ -20,14 +20,14 @@ api.interceptors.request.use((config) => {
 // Attendee Endpoints
 // ============================
 
-// Fetch all events for attendees
+// Fetch all events (used by attendees & admin)
 export const fetchAllEvents = () => api.get("/events");
 
 // Register for an event
 export const registerForEvent = (eventId, data) =>
   api.post(`/events/${eventId}/register`, data);
 
-// Cancel a registration for a specific event
+// Cancel a registration
 export const cancelRegistration = (eventId) =>
   api.delete(`/events/${eventId}/cancel`);
 
@@ -35,7 +35,7 @@ export const cancelRegistration = (eventId) =>
 export const fetchMyTickets = () => api.get("/tickets/my-tickets");
 
 // ============================
-// Organizer Endpoints
+// Organizer / Admin Endpoints
 // ============================
 
 // Fetch events created by the logged-in organizer
@@ -44,15 +44,25 @@ export const fetchMyEvents = () => api.get("/events/my-events");
 // Create a new event
 export const createEvent = (data) => api.post("/events", data);
 
-// Fetch attendees for a specific event
-export const fetchAttendees = (eventId) => api.get(`/attendees/${eventId}`);
+// 🔴 DELETE EVENT (ADMIN)
+export const deleteEvent = (eventId) =>
+  api.delete(`/events/${eventId}`);
 
-// Export attendees (CSV/Excel)
+// 🟡 UPDATE / EDIT EVENT (ADMIN)
+export const updateEvent = (eventId, data) =>
+  api.put(`/events/${eventId}`, data);
+
+// Fetch attendees for a specific event
+export const fetchAttendees = (eventId) =>
+  api.get(`/attendees/${eventId}`);
+
+// Export attendees (CSV / PDF)
 export const exportAttendees = (eventId, type) =>
-  api.get(`/attendees/${eventId}/export`, {
+  api.get(`/events/${eventId}/export`, {
     params: { type },
     responseType: "blob",
   });
+
 
 // ============================
 // ✅ CHECK-IN (QR SCAN)
@@ -60,5 +70,16 @@ export const exportAttendees = (eventId, type) =>
 
 export const verifyCheckin = (referenceCode) =>
   api.post("/checkin/verify", { referenceCode });
+
+// ============================
+// Admin: Organizer Management
+// ============================
+
+// Fetch all organizers (for admin dropdown)
+export const fetchOrganizers = () => api.get("/organizers");
+
+// Fetch events by a specific organizer (for admin dashboard view)
+export const fetchEventsByOrganizer = (organizerId) =>
+  api.get(`/events/organizer/${organizerId}`);
 
 export default api;

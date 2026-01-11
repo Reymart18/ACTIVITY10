@@ -1,5 +1,4 @@
-// src/components/sidebar/AttendeeSidebar.jsx
-import { LayoutDashboard, CalendarDays, Ticket } from "lucide-react";
+import { LayoutDashboard, CalendarDays, Ticket, Megaphone } from "lucide-react"; // <-- add Megaphone
 import SidebarItem from "./SidebarItem";
 
 export default function AttendeeSidebar() {
@@ -24,6 +23,7 @@ export default function AttendeeSidebar() {
         <SidebarItem to="/attendee" icon={LayoutDashboard} label="Dashboard" end />
         <SidebarItem to="/attendee/events" icon={CalendarDays} label="Events" />
         <SidebarItem to="/attendee/tickets" icon={Ticket} label="My Tickets" />
+        <SidebarItem to="/attendee/announcements" icon={Megaphone} label="Announcements" /> {/* new */}
       </nav>
 
       {/* Footer */}

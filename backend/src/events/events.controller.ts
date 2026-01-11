@@ -6,8 +6,11 @@ import {
   Param,
   Req,
   Delete,
+  Query,
+  Res,
   UseGuards,
 } from '@nestjs/common';
+import type { Response } from 'express'; // ✅ use 'import type'
 import { EventsService } from './events.service';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 
@@ -37,9 +40,45 @@ export class EventsController {
     return this.eventsService.registerForEvent(Number(id), req.user);
   }
 
-  // ✅ Cancel registration
   @Delete(':id/cancel')
   cancelRegistration(@Param('id') id: string, @Req() req) {
     return this.eventsService.cancelRegistration(Number(id), req.user);
   }
+
+  @Delete(':id')
+  deleteEvent(@Param('id') id: string, @Req() req) {
+    return this.eventsService.deleteEvent(Number(id), req.user);
+  }
+
+  // ✅ Export attendees as CSV or PDF
+  @Get(':id/export')
+  async exportAttendees(
+    @Param('id') eventId: string,
+    @Query('type') type: string,
+    @Res({ passthrough: true }) res: Response, // ✅ passthrough
+  ): Promise<Buffer | { message: string }> {
+    const file = await this.eventsService.exportAttendees(Number(eventId), type);
+  
+    if (type === 'csv') {
+      res.setHeader('Content-Type', 'text/csv');
+      res.setHeader(
+        'Content-Disposition',
+        `attachment; filename="event_${eventId}_attendees.csv"`,
+      );
+    } else if (type === 'pdf') {
+      res.setHeader('Content-Type', 'application/pdf');
+      res.setHeader(
+        'Content-Disposition',
+        `attachment; filename="event_${eventId}_attendees.pdf"`,
+      );
+    } else {
+      return { message: 'Invalid export type' };
+    }
+  
+    // ✅ Return the file buffer, NestJS will send it automatically
+    return file;
+  }
+  
+
+
 }
