@@ -32,7 +32,6 @@ import {
           <SidebarItem to="/organizer" icon={LayoutDashboard} label="Dashboard" end/>
           <SidebarItem to="/organizer/events" icon={CalendarDays} label="Events" />
           <SidebarItem to="/organizer/announcements" icon={BellRing} label="Announcements" />
-          <SidebarItem to="/organizer/scanner" icon={QrCode} label="Scanner" />
         </nav>
   
         {/* Footer */}

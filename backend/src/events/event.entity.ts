@@ -1,5 +1,10 @@
-// src/events/event.entity.ts
-import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn, OneToMany } from 'typeorm';
+import {
+  Entity,
+  PrimaryGeneratedColumn,
+  Column,
+  CreateDateColumn,
+  OneToMany,
+} from 'typeorm';
 import { Ticket } from '../tickets/ticket.entity';
 
 @Entity()
@@ -16,8 +21,9 @@ export class Event {
   @Column()
   location: string;
 
-  @Column({ type: 'date', nullable: true })
-  startDate: string;
+  // MySQL datetime column
+  @Column({ type: 'datetime', nullable: true })
+  startDate: Date;
 
   @Column({ type: 'int', nullable: true })
   capacity: number;
@@ -28,7 +34,6 @@ export class Event {
   @CreateDateColumn()
   createdAt: Date;
 
-  // 🔹 Add this for the Ticket relation
   @OneToMany(() => Ticket, ticket => ticket.event)
   tickets: Ticket[];
 }

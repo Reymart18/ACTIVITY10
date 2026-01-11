@@ -1,19 +1,31 @@
-#backend
-npm install -g @nestjs/cli
-npm install mysql2 @nestjs/typeorm typeorm bcryptjs jsonwebtoken
+# Event Management Frontend
 
-#frontend
+This is the **React frontend** for the Event Management System.  
+It allows attendees to view events, register, cancel registration, and see ticket status.  
+Admins can create events, view attendees, and export reports.
+
+---
+
+## **Technologies Used**
+
+- React
+- TailwindCSS
+- Axios
+- React Router DOM
+- QR Code (qrcode.react, html5-qrcode)
+- XLSX for Excel export
+- Lucide React (icons)
+
+---
+
+## **Setup & Installation**
+
+**1. Install dependencies**
+
+```bash
+npm install
 npm install -D tailwindcss postcss autoprefixer
 npx tailwindcss init -p
-npm install axios react-router-dom
+npm install axios react-router-dom qrcode.react xlsx lucide-react html5-qrcode
 
- npm install axios qrcode.react xlsx
-
-npm install lucide-react
-
-npm install @nestjs/passport passport passport-jwt
-npm install -D @types/passport-jwt
-
-npm install html5-qrcode
-
-whatttt
+to run frontend: npm run dev

@@ -1,12 +1,10 @@
-// src/components/organizer/CreateEventModal.jsx
 import React from "react";
 
 export default function CreateEventModal({ show, onClose, formData, setFormData, onSubmit }) {
   if (!show) return null;
 
-  const handleChange = (e) => {
+  const handleChange = (e) =>
     setFormData(prev => ({ ...prev, [e.target.name]: e.target.value }));
-  };
 
   return (
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
@@ -19,41 +17,62 @@ export default function CreateEventModal({ show, onClose, formData, setFormData,
             placeholder="Event Title"
             value={formData.title}
             onChange={handleChange}
-            className="w-full p-2 border rounded"
+            className="w-full p-2 rounded text-black"
             required
           />
+
+          <textarea
+            name="description"
+            placeholder="Event Description"
+            value={formData.description}
+            onChange={handleChange}
+            className="w-full p-2 rounded text-black"
+            rows={4}
+            required
+          />
+
           <input
             type="text"
             name="location"
             placeholder="Location"
             value={formData.location}
             onChange={handleChange}
-            className="w-full p-2 border rounded"
+            className="w-full p-2 rounded text-black"
             required
           />
+
+          {/* Date + Time */}
           <input
-            type="date"
+            type="datetime-local"
             name="startDate"
             value={formData.startDate}
             onChange={handleChange}
-            className="w-full p-2 border rounded"
+            className="w-full p-2 rounded text-black"
             required
           />
+
           <input
             type="number"
             name="capacity"
             placeholder="Capacity"
             value={formData.capacity}
             onChange={handleChange}
-            className="w-full p-2 border rounded"
+            className="w-full p-2 rounded text-black"
             required
           />
 
           <div className="flex justify-end gap-3 mt-4">
-            <button type="button" onClick={onClose} className="px-4 py-2 bg-gray-300 rounded hover:bg-gray-400">
+            <button
+              type="button"
+              onClick={onClose}
+              className="px-4 py-2 bg-gray-400 rounded hover:bg-gray-500"
+            >
               Cancel
             </button>
-            <button type="submit" className="px-4 py-2 bg-[#249E94] text-white rounded hover:bg-[#1f8b82]">
+            <button
+              type="submit"
+              className="px-4 py-2 bg-[#249E94] rounded hover:bg-[#1f8b82]"
+            >
               Create
             </button>
           </div>

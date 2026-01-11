@@ -10,10 +10,10 @@ export default function DashboardCards({ events }) {
   // Events Organized = total events
   const eventsOrganized = allEvents.length;
 
-  // Highest Attendees = max registered attendees among events
-  // Assumes event.registered is the number of attendees
+  // Highest Attendees = max validated attendees among events
+  // Uses `validatedCount` instead of registered
   const highestAttendees = allEvents.reduce(
-    (max, event) => Math.max(max, Number(event.registered || 0)),
+    (max, event) => Math.max(max, Number(event.validatedCount || 0)),
     0
   );
 
@@ -58,7 +58,7 @@ export default function DashboardCards({ events }) {
             <Users className="text-purple-400" size={28} />
           </div>
         </div>
-        <p className="text-xs text-gray-400 mt-4">Peak attendance record</p>
+        <p className="text-xs text-gray-400 mt-4">Peak attendance (validated QR codes)</p>
       </div>
     </div>
   );

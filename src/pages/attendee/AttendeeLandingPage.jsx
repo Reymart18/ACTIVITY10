@@ -1,152 +1,145 @@
 import { useEffect, useState } from "react";
-import EventCard from "./EventCard";
-import MyTicketCard from "./MyTicketCard";
-import Modal from "../../components/common/Modal";
-import { fetchAllEvents, registerForEvent, fetchMyTickets } from "../../api/events.api";
+import { CalendarDays, Users, ClipboardList } from "lucide-react";
+import { fetchAllEvents } from "../../api/events.api";
 
-export default function AttendeeLandingPage() {
+export default function AttendeeDashboard() {
   const [events, setEvents] = useState([]);
-  const [tickets, setTickets] = useState([]);
-  const [loadingEvents, setLoadingEvents] = useState(true);
-  const [loadingTickets, setLoadingTickets] = useState(true);
-  const [showRegisterModal, setShowRegisterModal] = useState(false);
-  const [selectedEvent, setSelectedEvent] = useState(null);
-  const [formData, setFormData] = useState({ name: "", email: "", company: "" });
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     loadEvents();
-    loadTickets();
   }, []);
 
-  const loadEvents = async () => {
-    setLoadingEvents(true);
-    try {
-      const res = await fetchAllEvents();
-      setEvents(res.data);
-    } catch (err) {
-      console.error(err.response?.data || err.message);
-    } finally {
-      setLoadingEvents(false);
-    }
+  const loadEvents = () => {
+    setLoading(true);
+    fetchAllEvents()
+      .then((res) => setEvents(res.data))
+      .catch((err) => console.error(err))
+      .finally(() => setLoading(false));
   };
 
-  const loadTickets = async () => {
-    setLoadingTickets(true);
-    try {
-      const res = await fetchMyTickets();
-      setTickets(res.data);
-    } catch (err) {
-      console.error(err.response?.data || err.message);
-    } finally {
-      setLoadingTickets(false);
-    }
-  };
+  const now = new Date();
 
-  const handleRegisterClick = (event) => {
-    if (event.capacity && event.tickets?.length >= event.capacity) {
-      alert("This event is full!");
-      return;
-    }
-    setSelectedEvent(event);
-    setShowRegisterModal(true);
-    setFormData({ name: "", email: "", company: "" });
-  };
-
-  const handleRegisterSubmit = async (e) => {
-    e.preventDefault();
-    if (!selectedEvent?.id) {
-      alert("No event selected!");
-      return;
-    }
-    try {
-      await registerForEvent(selectedEvent.id, formData);
-      alert("Registration successful!");
-      setShowRegisterModal(false);
-      loadTickets();
-    } catch (err) {
-      console.error(err.response || err);
-      alert(err.response?.data?.message || "Failed to register.");
-    }
-  };
+  // Events stats
+  const registeredEvents = events.filter((e) => e.tickets?.length > 0);
+  const attendedCount = registeredEvents.filter((e) =>
+    e.tickets?.some((t) => t.checkedIn)
+  ).length;
+  const missedCount = registeredEvents.filter(
+    (e) => e.tickets?.some((t) => !t.checkedIn) && new Date(e.startDate) < now
+  ).length;
 
   return (
-    <div className="min-h-screen bg-[#161E54] p-8 font-poppins text-white">
-      <h1 className="text-3xl font-bold mb-8">Welcome to Your Events Dashboard</h1>
+    <div className="p-8 space-y-8">
+      <h1 className="text-3xl font-bold">Attendee Dashboard</h1>
+      <p className="text-gray-400">See your event participation summary</p>
 
-      {/* Events Section */}
-      <section>
-        <h2 className="text-2xl font-semibold mb-4">Available Events</h2>
-        {loadingEvents ? (
-          <p className="text-gray-300">Loading events...</p>
-        ) : events.length === 0 ? (
-          <p className="text-gray-400">No events available at the moment.</p>
-        ) : (
-          <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-6">
-            {events.map((event) => (
-              <EventCard
-                key={event.id}
-                event={event}
-                onRegister={() => handleRegisterClick(event)}
-                dark
-              />
-            ))}
+      {loading && <p className="text-gray-400">Loading events...</p>}
+
+      {!loading && registeredEvents.length > 0 && (
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+          {/* Events Registered */}
+          <div className="bg-white/5 border border-white/10 rounded-2xl p-6 shadow-lg hover:shadow-xl transition">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm text-gray-400">Events Registered</p>
+                <h2 className="text-4xl font-bold mt-2">{registeredEvents.length}</h2>
+              </div>
+              <div className="bg-blue-500/20 p-4 rounded-xl">
+                <ClipboardList className="text-blue-400" size={28} />
+              </div>
+            </div>
+            <p className="text-xs text-gray-400 mt-4">
+              Total events you registered for
+            </p>
           </div>
-        )}
-      </section>
 
-      {/* Tickets Section */}
-      <section className="mt-12">
-        <h2 className="text-2xl font-semibold mb-4">My Tickets</h2>
-        {loadingTickets ? (
-          <p className="text-gray-300">Loading tickets...</p>
-        ) : tickets.length === 0 ? (
-          <p className="text-gray-400">You have not registered for any events yet.</p>
-        ) : (
-          <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-6">
-            {tickets.map((ticket) => (
-              <MyTicketCard key={ticket.id} ticket={ticket} />
-            ))}
+          {/* Events Attended */}
+          <div className="bg-white/5 border border-white/10 rounded-2xl p-6 shadow-lg hover:shadow-xl transition">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm text-gray-400">Events Attended</p>
+                <h2 className="text-4xl font-bold mt-2">{attendedCount}</h2>
+              </div>
+              <div className="bg-green-500/20 p-4 rounded-xl">
+                <CalendarDays className="text-green-400" size={28} />
+              </div>
+            </div>
+            <p className="text-xs text-gray-400 mt-4">
+              Events where your QR code was validated
+            </p>
           </div>
-        )}
-      </section>
 
-      {/* Registration Modal */}
-      {showRegisterModal && (
-        <Modal onClose={() => setShowRegisterModal(false)} className="bg-[#1E2A5F] text-white border border-white/20">
-          <h3 className="text-2xl font-bold mb-4">Register for {selectedEvent.title}</h3>
-          <form onSubmit={handleRegisterSubmit} className="space-y-4">
-            <input
-              type="text"
-              placeholder="Full Name"
-              value={formData.name}
-              onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-              required
-              className="w-full p-3 rounded-lg border border-white/20 bg-[#272C3E] text-white placeholder-gray-400 focus:ring-2 focus:ring-[#249E94] outline-none"
-            />
-            <input
-              type="email"
-              placeholder="Email"
-              value={formData.email}
-              onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-              required
-              className="w-full p-3 rounded-lg border border-white/20 bg-[#272C3E] text-white placeholder-gray-400 focus:ring-2 focus:ring-[#249E94] outline-none"
-            />
-            <input
-              type="text"
-              placeholder="Company (Optional)"
-              value={formData.company}
-              onChange={(e) => setFormData({ ...formData, company: e.target.value })}
-              className="w-full p-3 rounded-lg border border-white/20 bg-[#272C3E] text-white placeholder-gray-400 focus:ring-2 focus:ring-[#249E94] outline-none"
-            />
-            <button
-              type="submit"
-              className="w-full bg-[#249E94] hover:bg-[#1f8b82] text-white p-3 rounded-lg font-semibold transition"
-            >
-              Register
-            </button>
-          </form>
-        </Modal>
+          {/* Events Missed */}
+          <div className="bg-white/5 border border-white/10 rounded-2xl p-6 shadow-lg hover:shadow-xl transition">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm text-gray-400">Events Missed</p>
+                <h2 className="text-4xl font-bold mt-2">{missedCount}</h2>
+              </div>
+              <div className="bg-red-500/20 p-4 rounded-xl">
+                <Users className="text-red-400" size={28} />
+              </div>
+            </div>
+            <p className="text-xs text-gray-400 mt-4">
+              Past events you registered for but didn’t attend
+            </p>
+          </div>
+        </div>
       )}
+
+      {!loading && registeredEvents.length === 0 && (
+        <p className="text-gray-400 mt-4">You have no events registered yet.</p>
+      )}
+
+      {/* Event List */}
+      <div className="mt-8 space-y-4">
+        {registeredEvents.map((event) => {
+          const ticket = event.tickets?.[0]; // Assuming 1 ticket per attendee per event
+          const checkedIn = ticket?.checkedIn || false;
+          const eventDateTime = event.startDate
+            ? new Date(event.startDate).toLocaleString("en-US", {
+                year: "numeric",
+                month: "short",
+                day: "numeric",
+                hour: "2-digit",
+                minute: "2-digit",
+                hour12: true,
+              })
+            : "TBD";
+
+          // Determine event status
+          let statusLabel = "";
+          let bgColor = "";
+          let textColor = "";
+          if (checkedIn) {
+            statusLabel = "QR Validated / Attended";
+            bgColor = "bg-green-50";
+            textColor = "text-green-700";
+          } else if (new Date(event.startDate) < now) {
+            statusLabel = "Missed / Not Checked In";
+            bgColor = "bg-red-50";
+            textColor = "text-red-700";
+          } else {
+            statusLabel = "Upcoming / Not Checked In";
+            bgColor = "bg-blue-300";
+            textColor = "text-blue-700";
+          }
+
+          return (
+            <div
+              key={event.id}
+              className={`p-4 rounded-xl border ${bgColor} ${textColor} border-transparent`}
+            >
+              <h3 className="font-semibold text-lg">{event.title}</h3>
+              <p className="text-sm text-gray-600">
+                {event.location} • {eventDateTime}
+              </p>
+              <p className={`mt-2 font-medium`}>{statusLabel}</p>
+            </div>
+          );
+        })}
+      </div>
     </div>
   );
 }

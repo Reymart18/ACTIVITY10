@@ -1,4 +1,3 @@
-// src/auth/user.entity.ts
 import { Entity, Column, PrimaryGeneratedColumn, OneToMany } from 'typeorm';
 import { Ticket } from '../tickets/ticket.entity';
 
@@ -19,7 +18,6 @@ export class User {
   @Column({ default: 'attendee' })
   role: string;
 
-  // 🔹 Add this for Ticket relation
   @OneToMany(() => Ticket, ticket => ticket.user)
   tickets: Ticket[];
 }

@@ -1,4 +1,3 @@
-// src/pages/OrganizerEvents.jsx
 import { useEffect, useState } from "react";
 import { PlusCircle } from "lucide-react";
 import {
@@ -6,7 +5,7 @@ import {
   createEvent,
   fetchAttendees,
   exportAttendees
-} from "../../api/events.api"; // make sure fetchAttendees & exportAttendees exist
+} from "../../api/events.api";
 import CreateEventModal from "../../components/organizer/CreateEventModal";
 import EventCard from "../../components/organizer/EventCard";
 import AttendeesModal from "../../components/organizer/AttendeesModal";
@@ -49,10 +48,20 @@ export default function OrganizerEvents() {
   const handleViewAttendees = async (eventId) => {
     try {
       const res = await fetchAttendees(eventId);
-      setAttendees(res.data);
+
+      // ✅ Updated: API already returns {name, email, checkedIn}, no need for ticket.user
+      const mappedAttendees = res.data.map(a => ({
+        id: a.id,
+        name: a.name || "—",
+        email: a.email || "—",
+        checkedIn: a.checkedIn || false,
+      }));
+
+      setAttendees(mappedAttendees);
       setShowAttendeesModal(true);
     } catch (err) {
       console.error(err);
+      alert("Failed to load attendees.");
     }
   };
 
@@ -94,9 +103,7 @@ export default function OrganizerEvents() {
       {/* Events List */}
       <div>
         <h2 className="text-2xl font-semibold mb-4">My Events</h2>
-
         {loading && <p className="text-gray-400">Loading events...</p>}
-
         {!loading && events.length === 0 && <p className="text-gray-400">No events created yet.</p>}
 
         <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">

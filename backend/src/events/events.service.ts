@@ -1,5 +1,4 @@
-// src/events/events.service.ts
-import { Injectable } from '@nestjs/common';
+import { Injectable, BadRequestException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { Event } from './event.entity';
@@ -10,57 +9,112 @@ import { User } from '../auth/user.entity';
 export class EventsService {
   constructor(
     @InjectRepository(Event)
-    private readonly eventsRepo: Repository<Event>,
+    private eventsRepo: Repository<Event>,
     @InjectRepository(Ticket)
-    private readonly ticketRepo: Repository<Ticket>,
+    private ticketRepo: Repository<Ticket>,
+    @InjectRepository(User)
+    private userRepo: Repository<User>,
   ) {}
 
-  // Fetch all events with registered count
-  async findAllEvents(): Promise<any[]> {
-    const events = await this.eventsRepo.find({ relations: ['tickets'] });
-    return events.map(e => ({
-      ...e,
-      registered: e.tickets.length,
-    }));
-  }
+  // 🔹 ALL EVENTS (ATTENDEE VIEW)
+  async findAllEvents(userId: number) {
+    const events = await this.eventsRepo.find({
+      relations: ['tickets', 'tickets.user'],
+    });
 
-  // Fetch events for a specific organizer
-  async findByOrganizer(organizerId: number) {
-    return this.eventsRepo.find({
-      where: { organizerId },
-      relations: ['tickets'],
-      order: { createdAt: 'DESC' },
+    return events.map(e => {
+      const registered = e.tickets.some(t => t.user?.id === userId);
+      return {
+        id: e.id,
+        title: e.title,
+        description: e.description, 
+        location: e.location,
+        startDate: e.startDate,
+        capacity: e.capacity,
+        tickets: e.tickets,
+        ticketsCount: e.tickets.length,
+        isRegistered: registered,
+      };
     });
   }
 
-  // Create new event
-  async createEvent(eventData: Partial<Event>) {
-    const event = this.eventsRepo.create(eventData);
-    return this.eventsRepo.save(event);
+  // 🔹 ORGANIZER VIEW
+  async findByOrganizer(organizerId: number) {
+    const events = await this.eventsRepo.find({
+      where: { organizerId },
+      relations: ['tickets', 'tickets.user'],
+      order: { createdAt: 'DESC' },
+    });
+
+    return events.map(e => ({
+      ...e,
+      attendees: e.tickets.map(t => ({
+        id: t.id,
+        name: t.user?.name ?? '—',
+        email: t.user?.email ?? '—',
+        checkedIn: t.checkedIn,
+      })),
+    }));
   }
 
-  // Register attendee to an event
-  // src/events/events.service.ts
-async registerForEvent(eventId: number, userData: Partial<User>, user?: User) {
+  // 🔹 CREATE EVENT
+  async createEvent(data: Partial<Event>) {
+    return this.eventsRepo.save(this.eventsRepo.create(data));
+  }
+
+  // 🔒 REGISTER FOR EVENT
+  async registerForEvent(eventId: number, user: User) {
     const event = await this.eventsRepo.findOne({
       where: { id: eventId },
       relations: ['tickets'],
     });
-  
-    if (!event) throw new Error('Event not found');
-  
-    // Check capacity
+
+    if (!event) throw new BadRequestException('Event not found');
+
     if (event.capacity && event.tickets.length >= event.capacity) {
-      throw new Error('Event is full');
+      throw new BadRequestException('Event is full');
     }
-  
-    // Create ticket and assign to logged-in user
-    const ticket = this.ticketRepo.create({
-      event,
-      user, // link user
-      referenceCode: Math.random().toString(36).substring(2, 8).toUpperCase(),
+
+    const existingTicket = await this.ticketRepo.findOne({
+      where: {
+        user: { id: user.id },
+        event: { id: eventId },
+      },
     });
-  
+
+    if (existingTicket) {
+      throw new BadRequestException(
+        'You are already registered for this event',
+      );
+    }
+
+    const ticket = this.ticketRepo.create({
+      user,
+      event,
+      referenceCode: Math.random().toString(36).substring(2, 8).toUpperCase(),
+      checkedIn: false,
+    });
+
     return this.ticketRepo.save(ticket);
+  }
+
+  // 🔹 CANCEL REGISTRATION (only if not checked in)
+  async cancelRegistration(eventId: number, user: User) {
+    const ticket = await this.ticketRepo.findOne({
+      where: {
+        event: { id: eventId },
+        user: { id: user.id },
+      },
+    });
+
+    if (!ticket) {
+      throw new BadRequestException('You are not registered for this event');
+    }
+
+    if (ticket.checkedIn) {
+      throw new BadRequestException('Cannot cancel after check-in');
+    }
+
+    return this.ticketRepo.remove(ticket);
   }
 }

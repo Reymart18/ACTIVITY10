@@ -1,8 +1,15 @@
-// src/events/events.controller.ts
-import { Controller, Get, Post, Body, Param, Req, UseGuards } from '@nestjs/common';
+import {
+  Controller,
+  Get,
+  Post,
+  Body,
+  Param,
+  Req,
+  Delete,
+  UseGuards,
+} from '@nestjs/common';
 import { EventsService } from './events.service';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
-import { Event } from './event.entity';
 
 @Controller('events')
 @UseGuards(JwtAuthGuard)
@@ -10,8 +17,8 @@ export class EventsController {
   constructor(private readonly eventsService: EventsService) {}
 
   @Get()
-  getAllEvents(): Promise<Event[]> {
-    return this.eventsService.findAllEvents();
+  getAllEvents(@Req() req) {
+    return this.eventsService.findAllEvents(req.user.id);
   }
 
   @Get('my-events')
@@ -20,19 +27,19 @@ export class EventsController {
   }
 
   @Post()
-  createEvent(@Body() data: Partial<Event>, @Req() req) {
+  createEvent(@Body() data, @Req() req) {
     data.organizerId = req.user.id;
     return this.eventsService.createEvent(data);
   }
 
-    // src/events/events.controller.ts
+  @Post(':id/register')
+  register(@Param('id') id: string, @Req() req) {
+    return this.eventsService.registerForEvent(Number(id), req.user);
+  }
 
-@Post(':id/register')
-async register(
-  @Param('id') id: string,   // change from number -> string
-  @Body() body: any,
-  @Req() req
-) {
-  return this.eventsService.registerForEvent(Number(id), body, req.user); // convert to number
-}
+  // ✅ Cancel registration
+  @Delete(':id/cancel')
+  cancelRegistration(@Param('id') id: string, @Req() req) {
+    return this.eventsService.cancelRegistration(Number(id), req.user);
+  }
 }

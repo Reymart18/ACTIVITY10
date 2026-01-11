@@ -22,8 +22,8 @@ export default function MyTicketCard({ ticket }) {
       <p className="mt-2 text-gray-200 font-medium">Reference: {ticket.referenceCode}</p>
 
       {/* QR Code */}
-      <div className="my-4 p-4 bg-[#272C3E] border border-white/20 rounded-lg shadow-md">
-      <QRCode
+      <div className="my-4 p-4 bg-white border border-white/20 rounded-lg shadow-md flex justify-center">
+        <QRCode
             value={JSON.stringify({
                 type: "EVENT_TICKET",
                 ticketId: ticket.id,
@@ -31,10 +31,11 @@ export default function MyTicketCard({ ticket }) {
                 eventId: ticket.event.id,
             })}
             size={220}
-            bgColor="#272C3E"
-            fgColor="#ffffff"
-            />
-      </div>
+            bgColor="#ffffff"
+            fgColor="#000000"
+        />
+        </div>
+
 
       {/* Checked In Badge */}
       {ticket.checkedIn && (

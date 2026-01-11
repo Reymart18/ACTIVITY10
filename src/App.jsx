@@ -17,7 +17,6 @@ import OrganizerDashboardLayout from "./components/layout/OrganizerDashboardLayo
 import Dashboard from "./pages/organizer/Dashboard";
 import OrganizerEvents from "./pages/organizer/OrganizerEvents";
 import Announcements from "./pages/organizer/Announcements";
-import Scanner from "./pages/organizer/Scanner";
 
 // Attendee
 import AttendeeDashboardLayout from "./components/layout/AttendeeDashboardLayout";
@@ -45,7 +44,6 @@ function App() {
         <Route index element={<Dashboard />} />
         <Route path="events" element={<OrganizerEvents />} />
         <Route path="announcements" element={<Announcements />} />
-        <Route path="scanner" element={<Scanner />} />
       </Route>
 
       {/* Attendee */}

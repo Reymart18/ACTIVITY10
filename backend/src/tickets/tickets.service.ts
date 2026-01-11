@@ -1,4 +1,3 @@
-// tickets.service.ts
 import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
@@ -8,16 +7,13 @@ import { Ticket } from './ticket.entity';
 export class TicketsService {
   constructor(
     @InjectRepository(Ticket)
-    private readonly ticketRepo: Repository<Ticket>,
+    private ticketRepo: Repository<Ticket>,
   ) {}
 
-  // Fetch tickets by user
-  async findByUser(userId: number): Promise<Ticket[]> {
+  async findByUser(userId: number) {
     return this.ticketRepo.find({
-      where: {
-        user: { id: userId }, // ✅ correct syntax for relations
-      },
-      relations: ['user', 'event'], // include related data
+      where: { user: { id: userId } },
+      relations: ['event'],
     });
   }
 }

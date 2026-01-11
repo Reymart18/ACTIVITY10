@@ -1,95 +1,122 @@
 import React, { useEffect, useRef, useState } from "react";
-import { BrowserMultiFormatReader } from "@zxing/browser";
-import { verifyCheckin } from "../../api/checkin.api";
+import { Html5Qrcode } from "html5-qrcode";
+import { verifyCheckin } from "../../api/events.api";
 
 export default function CheckinScanner() {
-  const videoRef = useRef(null);
-  const readerRef = useRef(null);
-
+  const qrRegionRef = useRef(null);
+  const scannerRef = useRef(null);
+  const lastFrameText = useRef(null); // prevent rapid duplicate scans
   const [scannerRunning, setScannerRunning] = useState(false);
-  const [result, setResult] = useState("");
   const [error, setError] = useState("");
-  const [lastScanned, setLastScanned] = useState("");
+  const [status, setStatus] = useState("");
+  const [results, setResults] = useState([]); // array of { text, message, success }
 
   useEffect(() => {
-    return () => stopScanner();
+    return () => stopScanner(); // cleanup on unmount
   }, []);
 
-  const startScanner = async () => {
+  const startScanner = () => {
     if (scannerRunning) return;
 
+    if (!qrRegionRef.current) {
+      setError("QR region not found");
+      return;
+    }
+
     setError("");
-    setResult("");
+    setStatus("Initializing camera...");
+    setResults([]);
 
-    try {
-      await navigator.mediaDevices.getUserMedia({ video: true });
+    const html5QrCode = new Html5Qrcode("qr-reader");
+    scannerRef.current = html5QrCode;
 
-      const reader = new BrowserMultiFormatReader();
-      readerRef.current = reader;
+    html5QrCode
+      .start(
+        { facingMode: "environment" },
+        { fps: 10, qrbox: 250 },
+        async (decodedText) => {
+          // Prevent rapid duplicate scans (2 seconds window)
+          if (decodedText === lastFrameText.current) return;
+          lastFrameText.current = decodedText;
+          setTimeout(() => (lastFrameText.current = null), 2000);
 
-      await reader.decodeFromConstraints(
-        { video: { facingMode: "environment" } },
-        videoRef.current,
-        async (scanResult) => {
-          if (!scanResult) return;
-
-          const rawText = scanResult.getText();
-
-          // prevent duplicate scans
-          if (rawText === lastScanned) return;
-          setLastScanned(rawText);
+          setStatus("QR detected! Processing...");
 
           try {
-            // 🔥 PARSE QR JSON
-            const parsed = JSON.parse(rawText);
+            const parsed = JSON.parse(decodedText);
 
             if (!parsed.referenceCode) {
-              setResult("Invalid QR format");
+              addResult(decodedText, "Invalid QR format", false);
+              setStatus("Ready to scan");
               return;
             }
 
-            // ✅ SEND ONLY referenceCode
             const res = await verifyCheckin(parsed.referenceCode);
-            setResult(res.data.message);
-            stopScanner();
+
+            // Add message only if it doesn't already exist in results
+            addResult(decodedText, res.data.message || "Check-in successful", res.data.success);
+
+            setStatus("Ready to scan");
           } catch (err) {
             console.error(err);
-            setResult("Invalid QR code");
+            addResult(decodedText, "Invalid QR code", false);
+            setStatus("Ready to scan");
           }
+        },
+        (errorMessage) => {
+          // ignored per-frame errors
         }
-      );
-
-      setScannerRunning(true);
-    } catch (err) {
-      console.error(err);
-      setError("Camera permission denied or unavailable");
-    }
+      )
+      .then(() => {
+        setScannerRunning(true);
+        setStatus("Ready to scan");
+      })
+      .catch((err) => {
+        console.error(err);
+        setError("Failed to start camera. Check permissions.");
+        setStatus("");
+      });
   };
 
   const stopScanner = () => {
-    if (readerRef.current) {
-      readerRef.current.reset();
-      readerRef.current = null;
+    if (scannerRef.current) {
+      scannerRef.current
+        .stop()
+        .then(() => {
+          scannerRef.current.clear();
+          scannerRef.current = null;
+          setScannerRunning(false);
+          setStatus("");
+        })
+        .catch((err) => {
+          console.error("Failed to stop scanner", err);
+          setStatus("");
+        });
     }
-    setScannerRunning(false);
-    setLastScanned("");
+  };
+
+  const addResult = (text, message, success) => {
+    setResults((prev) => {
+      // Prevent duplicate messages
+      if (prev.some((r) => r.message === message)) return prev;
+      return [...prev, { text, message, success }];
+    });
   };
 
   return (
     <div className="p-5 bg-[#161E54] border border-white/10 rounded-xl mt-6 text-white max-w-md mx-auto">
-      <h2 className="text-xl font-semibold mb-3 text-center">
-        Event Check-in Scanner
-      </h2>
+      <h2 className="text-xl font-semibold mb-3 text-center">Event Check-in Scanner</h2>
 
       {error && <p className="text-red-400 text-center mb-2">{error}</p>}
 
-      <video
-        ref={videoRef}
+      <div
+        id="qr-reader"
+        ref={qrRegionRef}
         className="w-full rounded-lg border border-white/20 bg-black"
-        style={{ height: "300px", objectFit: "cover" }}
-        autoPlay
-        muted
-      />
+        style={{ height: "300px" }}
+      ></div>
+
+      <p className="mt-2 text-center text-gray-300 italic">{status}</p>
 
       <div className="flex justify-center mt-4 gap-3">
         {!scannerRunning ? (
@@ -109,10 +136,17 @@ export default function CheckinScanner() {
         )}
       </div>
 
-      {result && (
-        <p className="mt-4 text-center font-semibold text-green-400">
-          {result}
-        </p>
+      {results.length > 0 && (
+        <div className="mt-4 space-y-2 max-h-64 overflow-y-auto">
+          {results.map((r, idx) => (
+            <p
+              key={idx}
+              className={`text-center font-semibold ${r.success ? "text-green-400" : "text-red-400"}`}
+            >
+              {r.message}
+            </p>
+          ))}
+        </div>
       )}
     </div>
   );

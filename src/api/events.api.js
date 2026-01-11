@@ -27,6 +27,10 @@ export const fetchAllEvents = () => api.get("/events");
 export const registerForEvent = (eventId, data) =>
   api.post(`/events/${eventId}/register`, data);
 
+// Cancel a registration for a specific event
+export const cancelRegistration = (eventId) =>
+  api.delete(`/events/${eventId}/cancel`);
+
 // Fetch tickets of logged-in attendee
 export const fetchMyTickets = () => api.get("/tickets/my-tickets");
 
