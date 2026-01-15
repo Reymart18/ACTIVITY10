@@ -1,5 +1,9 @@
 import { Routes, Route } from "react-router-dom";
 
+// Public
+import BlogLanding from "./pages/BlogLanding";
+import GuestExploreEvents from "./pages/GuestExploreEvents"; 
+
 // Auth
 import Login from "./pages/Login";
 import Register from "./pages/Register";
@@ -21,13 +25,18 @@ import AttendeeDashboardLayout from "./components/layout/AttendeeDashboardLayout
 import AttendeeLandingPage from "./pages/attendee/AttendeeLandingPage";
 import AttendeeEventsPage from "./pages/attendee/AttendeeEventsPage";
 import AttendeeTicketsPage from "./pages/attendee/AttendeeTicketsPage";
-import AttendeeAnnouncements from "./pages/attendee/Announcements"; 
+import AttendeeAnnouncements from "./pages/attendee/Announcements";
 
 function App() {
   return (
     <Routes>
+        {/* Public Landing / Blog */}
+        <Route path="/" element={<BlogLanding />} />
+        {/* Guest Explore Events */}
+        <Route path="/explore" element={<GuestExploreEvents />} />
+
       {/* Auth */}
-      <Route path="/" element={<Login />} />
+      <Route path="/login" element={<Login />} />
       <Route path="/register" element={<Register />} />
 
       {/* Admin */}
