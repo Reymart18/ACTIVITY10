@@ -3,6 +3,7 @@ import { Routes, Route } from "react-router-dom";
 // Public
 import BlogLanding from "./pages/BlogLanding";
 import GuestExploreEvents from "./pages/GuestExploreEvents"; 
+import EventDetailsPage from "./pages/EventDetailsPage";
 
 // Auth
 import Login from "./pages/Login";
@@ -18,6 +19,7 @@ import Reports from "./pages/admin/Reports";
 import OrganizerDashboardLayout from "./components/layout/OrganizerDashboardLayout";
 import Dashboard from "./pages/organizer/Dashboard";
 import OrganizerEvents from "./pages/organizer/OrganizerEvents";
+import QrScannerPage from "./pages/organizer/QrScannerPage";
 import Announcements from "./pages/organizer/Announcements";
 
 // Attendee
@@ -34,6 +36,8 @@ function App() {
         <Route path="/" element={<BlogLanding />} />
         {/* Guest Explore Events */}
         <Route path="/explore" element={<GuestExploreEvents />} />
+        {/* Event Details */}
+        <Route path="/event/:id" element={<EventDetailsPage />} />
 
       {/* Auth */}
       <Route path="/login" element={<Login />} />
@@ -49,6 +53,7 @@ function App() {
       <Route path="/organizer" element={<OrganizerDashboardLayout />}>
         <Route index element={<Dashboard />} />
         <Route path="events" element={<OrganizerEvents />} />
+        <Route path="qr-scanner" element={<QrScannerPage />} />
         <Route path="announcements" element={<Announcements />} />
       </Route>
 

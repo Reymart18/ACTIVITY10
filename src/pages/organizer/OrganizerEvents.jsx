@@ -3,13 +3,13 @@ import { PlusCircle } from "lucide-react";
 import {
   fetchMyEvents,
   createEvent,
+  updateEvent,
   fetchAttendees,
   exportAttendees
 } from "../../api/events.api";
 import CreateEventModal from "../../components/organizer/CreateEventModal";
 import EventCard from "../../components/organizer/EventCard";
 import AttendeesModal from "../../components/organizer/AttendeesModal";
-import CheckinScanner from "../../components/organizer/CheckinScanner";
 import MessageBox from "../../components/messagebox/MessageBox";
 
 export default function OrganizerEvents() {
@@ -17,7 +17,8 @@ export default function OrganizerEvents() {
   const [loading, setLoading] = useState(true);
 
   const [showCreateModal, setShowCreateModal] = useState(false);
-  const [formData, setFormData] = useState({ title: "", location: "", startDate: "", capacity: "" });
+  const [editingEvent, setEditingEvent] = useState(null);
+  const [formData, setFormData] = useState({ title: "", description: "", location: "", startDate: "", endDate: "", standardCapacity: "", vipCapacity: "", poster: null });
 
   const [showAttendeesModal, setShowAttendeesModal] = useState(false);
   const [attendees, setAttendees] = useState([]);
@@ -39,15 +40,57 @@ export default function OrganizerEvents() {
   const handleCreateSubmit = async (e) => {
     e.preventDefault();
     try {
-      await createEvent(formData);
+      const data = new FormData();
+      data.append('title', formData.title);
+      data.append('description', formData.description || '');
+      data.append('location', formData.location);
+      data.append('startDate', formData.startDate);
+      data.append('endDate', formData.endDate);
+      data.append('standardCapacity', formData.standardCapacity);
+      data.append('vipCapacity', formData.vipCapacity);
+      if (formData.poster) {
+        data.append('poster', formData.poster);
+      }
+      
+      if (editingEvent) {
+        // Update existing event
+        await updateEvent(editingEvent.id, data);
+        setMessage({ type: "success", text: "Event updated successfully!" });
+      } else {
+        // Create new event
+        await createEvent(data);
+        setMessage({ type: "success", text: "Event created successfully!" });
+      }
+      
       setShowCreateModal(false);
-      setFormData({ title: "", location: "", startDate: "", capacity: "" });
+      setEditingEvent(null);
+      setFormData({ title: "", description: "", location: "", startDate: "", endDate: "", standardCapacity: "", vipCapacity: "", poster: null });
       loadEvents();
-      setMessage({ type: "success", text: "Event created successfully!" });
     } catch (err) {
       console.error(err);
-      setMessage({ type: "error", text: "Failed to create event." });
+      setMessage({ type: "error", text: editingEvent ? "Failed to update event." : "Failed to create event." });
     }
+  };
+
+  const handleEditEvent = (event) => {
+    setEditingEvent(event);
+    setFormData({
+      title: event.title || "",
+      description: event.description || "",
+      location: event.location || "",
+      startDate: event.startDate ? new Date(event.startDate).toISOString().slice(0, 16) : "",
+      endDate: event.endDate ? new Date(event.endDate).toISOString().slice(0, 16) : "",
+      standardCapacity: event.standardCapacity || "",
+      vipCapacity: event.vipCapacity || "",
+      poster: null,
+    });
+    setShowCreateModal(true);
+  };
+
+  const handleCloseModal = () => {
+    setShowCreateModal(false);
+    setEditingEvent(null);
+    setFormData({ title: "", description: "", location: "", startDate: "", endDate: "", standardCapacity: "", vipCapacity: "", poster: null });
   };
 
   const handleViewAttendees = async (eventId) => {
@@ -58,6 +101,7 @@ export default function OrganizerEvents() {
         name: a.name || "—",
         email: a.email || "—",
         checkedIn: a.checkedIn || false,
+        seatType: a.seatType || "standard",
       }));
       setAttendees(mappedAttendees);
       setShowAttendeesModal(true);
@@ -85,6 +129,11 @@ export default function OrganizerEvents() {
     }
   };
 
+  // Separate events into upcoming and recent
+  const now = new Date();
+  const upcomingEvents = events.filter(e => new Date(e.startDate) >= now);
+  const recentEvents = events.filter(e => new Date(e.startDate) < now);
+
   return (
     <div className="p-8 space-y-10">
       {/* Header */}
@@ -104,28 +153,53 @@ export default function OrganizerEvents() {
       {/* Create Event Modal */}
       <CreateEventModal
         show={showCreateModal}
-        onClose={() => setShowCreateModal(false)}
+        onClose={handleCloseModal}
         formData={formData}
         setFormData={setFormData}
         onSubmit={handleCreateSubmit}
+        isEditing={!!editingEvent}
       />
 
       {/* Events List */}
-      <div>
-        <h2 className="text-2xl font-semibold mb-4">My Events</h2>
+      <div className="space-y-10">
         {loading && <p className="text-gray-400">Loading events...</p>}
         {!loading && events.length === 0 && <p className="text-gray-400">No events created yet.</p>}
 
-        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
-          {events.map(event => (
-            <EventCard
-              key={event.id}
-              event={event}
-              onViewAttendees={handleViewAttendees}
-              onExport={handleExport}
-            />
-          ))}
-        </div>
+        {/* Upcoming Events */}
+        {!loading && upcomingEvents.length > 0 && (
+          <div>
+            <h2 className="text-2xl font-semibold mb-4 text-[#249E94]">Upcoming Events</h2>
+            <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
+              {upcomingEvents.map(event => (
+                <EventCard
+                  key={event.id}
+                  event={event}
+                  onViewAttendees={handleViewAttendees}
+                  onExport={handleExport}
+                  onEdit={handleEditEvent}
+                />
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* Recent Events */}
+        {!loading && recentEvents.length > 0 && (
+          <div>
+            <h2 className="text-2xl font-semibold mb-4 text-gray-400">Recent Events</h2>
+            <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
+              {recentEvents.map(event => (
+                <EventCard
+                  key={event.id}
+                  event={event}
+                  onViewAttendees={handleViewAttendees}
+                  onExport={handleExport}
+                  onEdit={handleEditEvent}
+                />
+              ))}
+            </div>
+          </div>
+        )}
       </div>
 
       {/* Attendees Modal */}
@@ -134,9 +208,6 @@ export default function OrganizerEvents() {
         attendees={attendees}
         onClose={() => setShowAttendeesModal(false)}
       />
-
-      {/* Check-in Scanner */}
-      <CheckinScanner />
 
       {/* ✅ Message Box */}
       {message && (

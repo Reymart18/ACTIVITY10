@@ -12,21 +12,19 @@ import {
     return (
       <aside
         className="
-          w-72 min-h-screen
-          bg-gradient-to-b from-[#0F143D] to-[#161E54]
+          w-72 h-screen sticky top-0
+          bg-gradient-to-b from-[#2D132C] to-[#801336]
           border-r border-white/10
           shadow-xl
           flex flex-col
+          flex-shrink-0
         "
       >
         {/* Brand */}
         <div className="px-6 py-6 border-b border-white/10">
           <h1 className="text-3xl font-extrabold tracking-wide">
-            🎟 EventAdmin
+            🎟 LiveScene
           </h1>
-          <p className="text-sm text-gray-400 mt-1">
-            Admin Control Panel
-          </p>
         </div>
   
         {/* Menu */}

@@ -6,19 +6,27 @@ export default function AttendeeTicketsPage() {
   const [tickets, setTickets] = useState([]);
   const [loading, setLoading] = useState(true);
 
+  const loadTickets = async () => {
+    try {
+      const res = await fetchMyTickets();
+      setTickets(res.data);
+    } catch (err) {
+      console.error(err);
+    }
+  };
+
   useEffect(() => {
-    const loadTickets = async () => {
+    const loadInitialTickets = async () => {
       setLoading(true);
-      try {
-        const res = await fetchMyTickets();
-        setTickets(res.data);
-      } catch (err) {
-        console.error(err);
-      } finally {
-        setLoading(false);
-      }
+      await loadTickets();
+      setLoading(false);
     };
-    loadTickets();
+    loadInitialTickets();
+
+    // Poll for updates every 3 seconds to check for check-in status changes
+    const pollInterval = setInterval(loadTickets, 3000);
+
+    return () => clearInterval(pollInterval);
   }, []);
 
   return (

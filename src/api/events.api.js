@@ -17,6 +17,14 @@ api.interceptors.request.use((config) => {
 });
 
 // ============================
+// Public / Guest Endpoints
+// ============================
+
+// Fetch all public events (no auth required)
+export const fetchPublicEvents = () => 
+  axios.get(`${API_URL}/events/public`);
+
+// ============================
 // Attendee Endpoints
 // ============================
 
@@ -76,7 +84,7 @@ export const verifyCheckin = (referenceCode) =>
 // ============================
 
 // Fetch all organizers (for admin dropdown)
-export const fetchOrganizers = () => api.get("/organizers");
+export const fetchOrganizers = () => api.get("/auth/organizers");
 
 // Fetch events by a specific organizer (for admin dashboard view)
 export const fetchEventsByOrganizer = (organizerId) =>

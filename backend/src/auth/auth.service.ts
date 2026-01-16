@@ -82,4 +82,16 @@ export class AuthService {
     user.isActive = isActive;
     return this.usersRepo.save(user);
   }
+
+  // ---------------------------
+  // Admin: Delete organizer
+  // ---------------------------
+  async deleteOrganizer(id: number) {
+    const user = await this.usersRepo.findOne({ where: { id } });
+    if (!user) throw new Error('Organizer not found');
+    if (user.role !== 'organizer') throw new Error('User is not an organizer');
+
+    await this.usersRepo.remove(user);
+    return { message: 'Organizer deleted successfully' };
+  }
 }

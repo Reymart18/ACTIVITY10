@@ -4,6 +4,7 @@ import { Repository } from 'typeorm';
 import { Event } from './event.entity';
 import { Ticket } from '../tickets/ticket.entity';
 import { User } from '../auth/user.entity';
+import { MailService } from '../mail/mail.service';
 
 @Injectable()
 export class EventsService {
@@ -14,7 +15,29 @@ export class EventsService {
     private ticketRepo: Repository<Ticket>,
     @InjectRepository(User)
     private userRepo: Repository<User>,
+    private mailService: MailService,
   ) {}
+
+  async findPublicEvents() {
+    const events = await this.eventsRepo.find({
+      relations: ['tickets'],
+      order: { createdAt: 'DESC' },
+    });
+
+    return events.map(e => ({
+      id: e.id,
+      title: e.title,
+      description: e.description,
+      location: e.location,
+      startDate: e.startDate,
+      endDate: e.endDate,
+      standardCapacity: e.standardCapacity,
+      vipCapacity: e.vipCapacity,
+      poster: e.poster,
+      tickets: e.tickets,
+      ticketsCount: e.tickets.length,
+    }));
+  }
 
   async findAllEvents(userId: number) {
     const events = await this.eventsRepo.find({
@@ -29,7 +52,10 @@ export class EventsService {
         description: e.description,
         location: e.location,
         startDate: e.startDate,
-        capacity: e.capacity,
+        endDate: e.endDate,
+        standardCapacity: e.standardCapacity,
+        vipCapacity: e.vipCapacity,
+        poster: e.poster,
         tickets: e.tickets,
         ticketsCount: e.tickets.length,
         isRegistered: registered,
@@ -51,6 +77,7 @@ export class EventsService {
         name: t.user?.name ?? '—',
         email: t.user?.email ?? '—',
         checkedIn: t.checkedIn,
+        seatType: t.seatType,
       })),
     }));
   }
@@ -59,7 +86,24 @@ export class EventsService {
     return this.eventsRepo.save(this.eventsRepo.create(data));
   }
 
-  async registerForEvent(eventId: number, user: User) {
+  async updateEvent(eventId: number, data: Partial<Event>, user: User) {
+    const event = await this.eventsRepo.findOne({ where: { id: eventId } });
+
+    if (!event) {
+      throw new BadRequestException('Event not found');
+    }
+
+    // Only the organizer who created the event or admin can update it
+    if (event.organizerId !== user.id && user.role !== 'admin') {
+      throw new BadRequestException('Not authorized to update this event');
+    }
+
+    // Update the event with new data
+    Object.assign(event, data);
+    return this.eventsRepo.save(event);
+  }
+
+  async registerForEvent(eventId: number, user: User, seatType: string = 'standard') {
     const event = await this.eventsRepo.findOne({
       where: { id: eventId },
       relations: ['tickets'],
@@ -67,8 +111,12 @@ export class EventsService {
 
     if (!event) throw new BadRequestException('Event not found');
 
-    if (event.capacity && event.tickets.length >= event.capacity) {
-      throw new BadRequestException('Event is full');
+    // Check seat type capacity
+    const seatTypeTickets = event.tickets.filter(t => t.seatType === seatType);
+    const capacity = seatType === 'vip' ? event.vipCapacity : event.standardCapacity;
+    
+    if (capacity && seatTypeTickets.length >= capacity) {
+      throw new BadRequestException(`${seatType === 'vip' ? 'VIP' : 'Standard'} seats are full`);
     }
 
     const existingTicket = await this.ticketRepo.findOne({
@@ -85,11 +133,33 @@ export class EventsService {
     const ticket = this.ticketRepo.create({
       user,
       event,
+      seatType,
       referenceCode: Math.random().toString(36).substring(2, 8).toUpperCase(),
       checkedIn: false,
     });
 
-    return this.ticketRepo.save(ticket);
+    const savedTicket = await this.ticketRepo.save(ticket);
+
+    // Send email with ticket (non-blocking - fire and forget)
+    this.mailService.sendTicketEmail(
+      user.email,
+      user.name,
+      {
+        eventTitle: event.title,
+        eventLocation: event.location,
+        eventDate: event.startDate,
+        referenceCode: savedTicket.referenceCode,
+        seatType: savedTicket.seatType,
+        ticketId: savedTicket.id,
+        eventId: event.id,
+      },
+    ).then(() => {
+      console.log(`Ticket email sent to ${user.email}`);
+    }).catch((error) => {
+      console.error('Failed to send ticket email:', error);
+    });
+
+    return savedTicket;
   }
 
   async cancelRegistration(eventId: number, user: User) {
@@ -106,6 +176,15 @@ export class EventsService {
 
     if (ticket.checkedIn) {
       throw new BadRequestException('Already checked in');
+    }
+
+    // Check if 5 minutes have passed since registration
+    const registrationTime = new Date(ticket.createdAt).getTime();
+    const currentTime = new Date().getTime();
+    const minutesPassed = (currentTime - registrationTime) / (1000 * 60);
+
+    if (minutesPassed >= 5) {
+      throw new BadRequestException('Cancellation period has expired. You can only cancel within 5 minutes of registration.');
     }
 
     return this.ticketRepo.remove(ticket);
