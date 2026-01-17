@@ -4,8 +4,12 @@ export default function DashboardCards({ events }) {
   const allEvents = events || [];
   const now = new Date();
 
-  // Ongoing Events = events where startDate <= now
-  const ongoingEvents = allEvents.filter(event => new Date(event.startDate) <= now).length;
+  // Ongoing Events = events where startDate <= now AND endDate >= now
+  const ongoingEvents = allEvents.filter(event => {
+    const startDate = new Date(event.startDate);
+    const endDate = new Date(event.endDate);
+    return startDate <= now && endDate >= now;
+  }).length;
 
   // Events Organized = total events
   const eventsOrganized = allEvents.length;

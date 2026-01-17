@@ -114,8 +114,10 @@ function EventCarousel({ title, items, onRegister, onCancel, showDivider = false
 export default function AttendeeEventsPage() {
   const navigate = useNavigate();
   const [upcomingEvents, setUpcomingEvents] = useState([]);
+  const [ongoingEvents, setOngoingEvents] = useState([]);
   const [recentEvents, setRecentEvents] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [currentTime, setCurrentTime] = useState(new Date());
 
   const [showRegisterModal, setShowRegisterModal] = useState(false);
   const [selectedEvent, setSelectedEvent] = useState(null);
@@ -140,14 +142,19 @@ export default function AttendeeEventsPage() {
     setLoading(true);
     try {
       const res = await fetchAllEvents();
-      const now = new Date();
       const events = res.data;
 
-      // Separate upcoming and recent events
-      const upcoming = events.filter(e => new Date(e.startDate) >= now);
-      const recent = events.filter(e => new Date(e.startDate) < now);
+      // Separate upcoming, ongoing, and recent events
+      const upcoming = events.filter(e => new Date(e.startDate) > currentTime);
+      const ongoing = events.filter(e => {
+        const startDate = new Date(e.startDate);
+        const endDate = new Date(e.endDate);
+        return startDate <= currentTime && endDate >= currentTime;
+      });
+      const recent = events.filter(e => new Date(e.endDate) < currentTime);
 
       setUpcomingEvents(upcoming);
+      setOngoingEvents(ongoing);
       setRecentEvents(recent);
     } catch (err) {
       console.error(err);
@@ -158,6 +165,15 @@ export default function AttendeeEventsPage() {
 
   useEffect(() => {
     loadEvents();
+  }, []);
+
+  // Auto-update current time every second to move events between sections immediately
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setCurrentTime(new Date());
+    }, 1000); // Update every second
+
+    return () => clearInterval(interval);
   }, []);
 
   // Navigate to event details page
@@ -172,8 +188,15 @@ export default function AttendeeEventsPage() {
     try {
       await cancelRegistration(eventId);
 
-      // Update both upcoming and recent events
+      // Update upcoming, ongoing, and recent events
       setUpcomingEvents(prev =>
+        prev.map(ev =>
+          ev.id === eventId
+            ? { ...ev, isRegistered: false, tickets: [] }
+            : ev
+        )
+      );
+      setOngoingEvents(prev =>
         prev.map(ev =>
           ev.id === eventId
             ? { ...ev, isRegistered: false, tickets: [] }
@@ -216,6 +239,17 @@ export default function AttendeeEventsPage() {
             : ev
         )
       );
+      setOngoingEvents(prev =>
+        prev.map(ev =>
+          ev.id === selectedEvent.id
+            ? {
+                ...ev,
+                isRegistered: true,
+                tickets: [...(ev.tickets || []), { checkedIn: false }],
+              }
+            : ev
+        )
+      );
       setRecentEvents(prev =>
         prev.map(ev =>
           ev.id === selectedEvent.id
@@ -247,8 +281,20 @@ export default function AttendeeEventsPage() {
               items={upcomingEvents}
               onRegister={handleRegisterClick}
               onCancel={handleCancelRegistration}
-              showDivider={recentEvents.length > 0}
+              showDivider={ongoingEvents.length > 0 || recentEvents.length > 0}
             />
+          )}
+
+          {ongoingEvents.length > 0 && (
+            <div className="mt-24">
+              <EventCarousel
+                title="Ongoing Events"
+                items={ongoingEvents}
+                onRegister={handleRegisterClick}
+                onCancel={handleCancelRegistration}
+                showDivider={recentEvents.length > 0}
+              />
+            </div>
           )}
 
           {recentEvents.length > 0 && (
@@ -262,7 +308,7 @@ export default function AttendeeEventsPage() {
             </div>
           )}
 
-          {upcomingEvents.length === 0 && recentEvents.length === 0 && (
+          {upcomingEvents.length === 0 && ongoingEvents.length === 0 && recentEvents.length === 0 && (
             <div className="text-center py-20">
               <h2 className="text-3xl font-bold mb-4 text-gray-900">No Events Available</h2>
               <p className="text-gray-600">Check back later for upcoming events!</p>

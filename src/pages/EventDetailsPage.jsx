@@ -95,7 +95,7 @@ export default function EventDetailsPage() {
     );
   }
 
-  const isPastEvent = new Date(event.startDate) < new Date();
+  const isPastEvent = new Date(event.endDate) < new Date();
   const standardCount = event.tickets?.filter(t => t.seatType === 'standard').length || 0;
   const vipCount = event.tickets?.filter(t => t.seatType === 'vip').length || 0;
   const totalCapacity = (event.standardCapacity || 0) + (event.vipCapacity || 0);

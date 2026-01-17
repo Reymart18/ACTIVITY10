@@ -78,8 +78,10 @@ function EventCarousel({ title, items, onRegister, onCancel, showDivider = false
 export default function AdminDashboard() {
   const navigate = useNavigate();
   const [upcomingEvents, setUpcomingEvents] = useState([]);
+  const [ongoingEvents, setOngoingEvents] = useState([]);
   const [recentEvents, setRecentEvents] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [currentTime, setCurrentTime] = useState(new Date());
   
   // Organizer selector state
   const [organizers, setOrganizers] = useState([]);
@@ -90,6 +92,15 @@ export default function AdminDashboard() {
   useEffect(() => {
     loadOrganizers();
     loadEvents();
+  }, []);
+
+  // Auto-update current time every second to move events between sections immediately
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setCurrentTime(new Date());
+    }, 1000); // Update every second
+
+    return () => clearInterval(interval);
   }, []);
 
   const loadOrganizers = async () => {
@@ -125,14 +136,19 @@ export default function AdminDashboard() {
     setLoading(true);
     try {
       const res = await fetchAllEvents();
-      const now = new Date();
       const events = res.data;
 
-      // Separate upcoming and recent events
-      const upcoming = events.filter(e => new Date(e.startDate) >= now);
-      const recent = events.filter(e => new Date(e.startDate) < now);
+      // Separate upcoming, ongoing, and recent events
+      const upcoming = events.filter(e => new Date(e.startDate) > currentTime);
+      const ongoing = events.filter(e => {
+        const startDate = new Date(e.startDate);
+        const endDate = new Date(e.endDate);
+        return startDate <= currentTime && endDate >= currentTime;
+      });
+      const recent = events.filter(e => new Date(e.endDate) < currentTime);
 
       setUpcomingEvents(upcoming);
+      setOngoingEvents(ongoing);
       setRecentEvents(recent);
     } catch (err) {
       console.error(err);
@@ -153,8 +169,15 @@ export default function AdminDashboard() {
     try {
       await cancelRegistration(eventId);
 
-      // Update both upcoming and recent events
+      // Update upcoming, ongoing, and recent events
       setUpcomingEvents(prev =>
+        prev.map(ev =>
+          ev.id === eventId
+            ? { ...ev, isRegistered: false, tickets: [] }
+            : ev
+        )
+      );
+      setOngoingEvents(prev =>
         prev.map(ev =>
           ev.id === eventId
             ? { ...ev, isRegistered: false, tickets: [] }
@@ -207,8 +230,9 @@ export default function AdminDashboard() {
         {selectedOrganizer === "all" && (
           <div className="max-w-7xl mx-auto px-6 sm:px-10 mb-12">
             <GlobalDashboardCards 
-              upcomingEvents={upcomingEvents} 
-              allEvents={[...upcomingEvents, ...recentEvents]} 
+              upcomingEvents={upcomingEvents}
+              ongoingEvents={ongoingEvents}
+              allEvents={[...upcomingEvents, ...ongoingEvents, ...recentEvents]} 
             />
           </div>
         )}
@@ -225,8 +249,20 @@ export default function AdminDashboard() {
                 items={upcomingEvents}
                 onRegister={handleRegisterClick}
                 onCancel={handleCancelRegistration}
-                showDivider={recentEvents.length > 0}
+                showDivider={ongoingEvents.length > 0 || recentEvents.length > 0}
               />
+            )}
+
+            {ongoingEvents.length > 0 && (
+              <div className="mt-24">
+                <EventCarousel
+                  title="Ongoing Events"
+                  items={ongoingEvents}
+                  onRegister={handleRegisterClick}
+                  onCancel={handleCancelRegistration}
+                  showDivider={recentEvents.length > 0}
+                />
+              </div>
             )}
 
             {recentEvents.length > 0 && (
@@ -240,7 +276,7 @@ export default function AdminDashboard() {
               </div>
             )}
 
-            {upcomingEvents.length === 0 && recentEvents.length === 0 && (
+            {upcomingEvents.length === 0 && ongoingEvents.length === 0 && recentEvents.length === 0 && (
               <div className="text-center py-20">
                 <h2 className="text-3xl font-bold mb-4 text-gray-900">No Events Available</h2>
                 <p className="text-gray-600">Check back later for upcoming events!</p>
@@ -331,8 +367,9 @@ function DashboardCards({ events }) {
 }
 
 // Global Dashboard Cards for all events
-function GlobalDashboardCards({ upcomingEvents, allEvents }) {
+function GlobalDashboardCards({ upcomingEvents, ongoingEvents, allEvents }) {
   const upcomingCount = upcomingEvents.length;
+  const ongoingCount = ongoingEvents.length;
   const totalEvents = allEvents.length;
   const highestAttendees = allEvents.reduce((max, event) => {
     const checkedInCount = event.tickets?.filter(t => t.checkedIn).length || 0;
@@ -340,18 +377,31 @@ function GlobalDashboardCards({ upcomingEvents, allEvents }) {
   }, 0);
 
   return (
-    <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+    <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-6">
       <div className="bg-white/5 border border-white/10 rounded-2xl p-6 shadow-lg hover:shadow-xl transition">
         <div className="flex items-center justify-between">
           <div>
-            <p className="text-sm text-gray-400">Total Upcoming Events</p>
+            <p className="text-sm text-gray-400">Upcoming Events</p>
             <h2 className="text-4xl font-bold mt-2 text-white">{upcomingCount}</h2>
           </div>
           <div className="bg-[#249E94]/20 p-4 rounded-xl">
             <CalendarDays className="text-[#249E94]" size={28} />
           </div>
         </div>
-        <p className="text-xs text-gray-400 mt-4">Across all organizers</p>
+        <p className="text-xs text-gray-400 mt-4">Scheduled ahead</p>
+      </div>
+
+      <div className="bg-white/5 border border-white/10 rounded-2xl p-6 shadow-lg hover:shadow-xl transition">
+        <div className="flex items-center justify-between">
+          <div>
+            <p className="text-sm text-gray-400">Ongoing Events</p>
+            <h2 className="text-4xl font-bold mt-2 text-white">{ongoingCount}</h2>
+          </div>
+          <div className="bg-orange-500/20 p-4 rounded-xl">
+            <CalendarDays className="text-orange-400" size={28} />
+          </div>
+        </div>
+        <p className="text-xs text-gray-400 mt-4">Currently happening</p>
       </div>
 
       <div className="bg-white/5 border border-white/10 rounded-2xl p-6 shadow-lg hover:shadow-xl transition">

@@ -15,6 +15,7 @@ import MessageBox from "../../components/messagebox/MessageBox";
 export default function OrganizerEvents() {
   const [events, setEvents] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [currentTime, setCurrentTime] = useState(new Date());
 
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [editingEvent, setEditingEvent] = useState(null);
@@ -27,6 +28,15 @@ export default function OrganizerEvents() {
 
   useEffect(() => {
     loadEvents();
+  }, []);
+
+  // Auto-update current time every second to move events between sections immediately
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setCurrentTime(new Date());
+    }, 1000); // Update every second
+
+    return () => clearInterval(interval);
   }, []);
 
   const loadEvents = () => {
@@ -129,10 +139,14 @@ export default function OrganizerEvents() {
     }
   };
 
-  // Separate events into upcoming and recent
-  const now = new Date();
-  const upcomingEvents = events.filter(e => new Date(e.startDate) >= now);
-  const recentEvents = events.filter(e => new Date(e.startDate) < now);
+  // Separate events into upcoming, ongoing, and recent
+  const upcomingEvents = events.filter(e => new Date(e.startDate) > currentTime);
+  const ongoingEvents = events.filter(e => {
+    const startDate = new Date(e.startDate);
+    const endDate = new Date(e.endDate);
+    return startDate <= currentTime && endDate >= currentTime;
+  });
+  const recentEvents = events.filter(e => new Date(e.endDate) < currentTime);
 
   return (
     <div className="p-8 space-y-10">
@@ -171,6 +185,24 @@ export default function OrganizerEvents() {
             <h2 className="text-2xl font-semibold mb-4 text-[#249E94]">Upcoming Events</h2>
             <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
               {upcomingEvents.map(event => (
+                <EventCard
+                  key={event.id}
+                  event={event}
+                  onViewAttendees={handleViewAttendees}
+                  onExport={handleExport}
+                  onEdit={handleEditEvent}
+                />
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* Ongoing Events */}
+        {!loading && ongoingEvents.length > 0 && (
+          <div>
+            <h2 className="text-2xl font-semibold mb-4 text-orange-400">Ongoing Events</h2>
+            <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
+              {ongoingEvents.map(event => (
                 <EventCard
                   key={event.id}
                   event={event}
